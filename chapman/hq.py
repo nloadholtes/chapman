@@ -87,8 +87,9 @@ class Listener(object):
                 try:
                     resp = self.hqueue.get(self.client_name, count=count)
                     log.debug('Got from queue %s', resp)
-                except Exception:
+                except Exception as e:
                     log.exception('Could not GET from queue, wait 5s')
+                    log.exception(e)
                     _sem_multi_release(sem, count)
                     time.sleep(5)
                     continue
@@ -115,8 +116,9 @@ class Listener(object):
                         q.put((k, v))
                     except Exception:
                         sem.release()  # since it wasn't enqueued
-            except Exception:
+            except Exception as e:
                 log.exception('Unknown exception in dispatcher, wait 5s')
+                log.exception(e)
                 time.sleep(5)
 
     def worker(self, sem, q):
@@ -127,15 +129,19 @@ class Listener(object):
             except Retry:
                 try:
                     self.hqueue.retry(id)
-                except Exception:
+                except Exception as e:
                     log.exception('Failed to retry %s', id)
-            except Exception:
+                    log.exception(e)
+            except Exception as e:
                 log.exception('Error handling request, waiting 5s')
+                log.exception(e)
+
             else:
                 try:
                     self.hqueue.retire(id)
-                except Exception:
+                except Exception as e:
                     log.exception('Failed to retire %s', id)
+                    log.exception(e)
             finally:
                 sem.release()
 
